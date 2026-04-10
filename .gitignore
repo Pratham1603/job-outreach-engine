@@ -1,5 +1,5 @@
+.env
 data/output/*.csv
-*.env
 __pycache__/
-.DS_Store
 venv/
+*.pyc
