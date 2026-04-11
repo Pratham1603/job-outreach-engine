@@ -34,8 +34,15 @@ def parse_name_from_title(title: str) -> str | None:
     return None
 
 
-def scrape_hr_names(company: str, domain: str, progress_callback=None) -> list:
-    print(f"\n[🔍] Scraping HR profiles for: {company}")
+def scrape_hr_names(company: str, domain: str, roles: list = None, progress_callback=None) -> list:
+    print(f"\n[🔍] Scraping profiles for: {company}")
+
+    # Build query and keyword filter from roles
+    if not roles:
+        roles = ["HR", "Human Resources", "Talent Acquisition"]
+
+    role_query = " OR ".join([f'"{r}"' for r in roles])
+    role_keywords = [r.lower() for r in roles]
 
     all_names = []
     seen = set()
@@ -51,7 +58,7 @@ def scrape_hr_names(company: str, domain: str, progress_callback=None) -> list:
 
         params = {
             "engine": "google",
-            "q": f'site:linkedin.com/in ("HR" OR "Human Resources" OR "Talent Acquisition") "{company}"',
+            "q": f'site:linkedin.com/in ({role_query}) "{company}"',
             "api_key": SERPAPI_KEY,
             "num": 10,
             "start": start,
@@ -83,7 +90,8 @@ def scrape_hr_names(company: str, domain: str, progress_callback=None) -> list:
             if company.lower() not in title_lower:
                 continue
 
-            if not any(word in title_lower for word in ["hr", "human", "talent", "recruit"]):
+            # Filter using dynamic role keywords
+            if not any(kw in title_lower for kw in role_keywords):
                 continue
 
             name = parse_name_from_title(title)
@@ -109,7 +117,7 @@ def scrape_hr_names(company: str, domain: str, progress_callback=None) -> list:
         page += 1
         time.sleep(1.5)
 
-    print(f"\n[✓] Total HR profiles found: {len(all_names)}")
+    print(f"\n[✓] Total profiles found: {len(all_names)}")
     return all_names
 
 

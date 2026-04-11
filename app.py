@@ -31,13 +31,34 @@ st.divider()
 # --- TOP PATTERNS ---
 TOP_PATTERNS = ["first.last", "firstlast", "flast", "f.last"]
 
+# --- Role Search ---
+ROLE_SUGGESTIONS = ["HR", "Human Resources", "Talent Acquisition", "Recruiter","Reliance Jio", 
+                    "Hiring Manager", "Software Engineer", "SDE", "Data Scientist", 
+                    "Product Manager", "Engineering Manager"]
+
+selected_roles = st.multiselect(
+    "🔍 Search roles",
+    options=ROLE_SUGGESTIONS,
+    default=["HR", "Human Resources", "Talent Acquisition", "Reliance Jio"],
+    placeholder="Select or type a role...",
+    accept_new_options=True
+)
+st.caption("💡 Tip: To find Referals, search **ROLE**, **COMPANY NAME**, e.g **Associate Data Scientist**, **Reliance Jio**")
+
+if not selected_roles:
+    st.warning("Add at least one role to search.")
+
 st.divider()
 
 # --- Run Button ---
-if st.button("🔍 Find HR Emails", use_container_width=True, type="primary"):
+if st.button("🔍 Find Emails", use_container_width=True, type="primary"):
 
     if not company or not domain:
         st.error("Please enter both company name and domain!")
+        st.stop()
+
+    if not selected_roles:
+        st.error("Please select at least one role to search!")
         st.stop()
 
     # --- Progress UI ---
@@ -51,11 +72,12 @@ if st.button("🔍 Find HR Emails", use_container_width=True, type="primary"):
     # --- SCRAPING ---
     with st.status("🔍 Scraping LinkedIn profiles...", expanded=True) as status:
 
-        st.write(f"Searching for HR profiles at {company}...")
+        st.write(f"Searching for **{', '.join(selected_roles)}** profiles at **{company}**...")
 
         hr_names = scrape_hr_names(
             company,
             domain,
+            roles=selected_roles,
             progress_callback=progress_callback
         )
 
@@ -63,23 +85,19 @@ if st.button("🔍 Find HR Emails", use_container_width=True, type="primary"):
             status.update(label="❌ No profiles found!", state="error")
             st.stop()
 
-        st.write(f"✅ Found {len(hr_names)} HR profiles")
+        st.write(f"✅ Found {len(hr_names)} profiles")
 
-        # --- EMAIL GENERATION (MULTIPLE PATTERNS PER HR) ---
+        # --- EMAIL GENERATION ---
         st.write("📧 Generating email predictions...")
 
         all_emails = []
 
         for hr in hr_names:
-            # skip invalid names
             if len(hr["name"].split()) < 2:
                 continue
 
             emails = predict_emails(hr["name"], domain)
-
-            # keep only top patterns
             emails = [e for e in emails if e["pattern"] in TOP_PATTERNS]
-
             all_emails.extend(emails)
 
         st.write(f"✅ Generated {len(all_emails)} email predictions")
@@ -97,13 +115,14 @@ if st.button("🔍 Find HR Emails", use_container_width=True, type="primary"):
         st.warning("No emails generated.")
         st.stop()
 
-    # ✅ KEEP DUPLICATE REMOVAL
     df = df.drop_duplicates(subset=["email"])
 
     # --- Group by person ---
-    for name in df["name"].unique():
+    import random
+    names = list(df["name"].unique())
+    random.shuffle(names)
+    for name in names[:10]:
         person_df = df[df["name"] == name][["pattern", "email"]]
-
         with st.expander(f"👤 {name}"):
             st.dataframe(person_df, hide_index=True, use_container_width=True)
 
@@ -119,7 +138,7 @@ if st.button("🔍 Find HR Emails", use_container_width=True, type="primary"):
     st.download_button(
         label="⬇️ Download CSV",
         data=csv,
-        file_name=f"{company.lower()}_hr_emails.csv",
+        file_name=f"{company.lower()}_emails.csv",
         mime="text/csv",
         use_container_width=True
     )
