@@ -10,28 +10,34 @@ PATTERNS = [
     ("f.last",      lambda f, l: f"{f[0]}.{l}"),
     ("last.first",  lambda f, l: f"{l}.{f}"),
     ("firstname",   lambda f, l: f"{f}"),
-    ("first.l",     lambda f, l: f"{f}.{l[0]}"),
+    ("first.l",     lambda f, l: f"{f}.{l[0]}")
 ]
 
 def predict_emails(full_name: str, domain: str) -> list:
     parts = full_name.strip().lower().split()
+
     if len(parts) < 2:
-        print(f"[!] Skipping '{full_name}' — need first and last name")
         return []
 
     first = parts[0]
-    last = parts[-1]
+    last = parts[1]
+
     domain = domain.strip().lower().replace("@", "")
 
     results = []
     for pattern_name, fn in PATTERNS:
-        local = fn(first, last)
-        email = f"{local}@{domain}"
-        results.append({
-            "name": full_name,
-            "pattern": pattern_name,
-            "email": email
-        })
+        try:
+            local = fn(first, last)
+            email = f"{local}@{domain}"
+
+            results.append({
+                "name": full_name,
+                "pattern": pattern_name,
+                "email": email
+            })
+        except:
+            continue
+
     return results
 
 

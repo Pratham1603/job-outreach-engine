@@ -9,36 +9,32 @@ load_dotenv()
 
 SERPAPI_KEY = os.getenv("SERPAPI_KEY")
 
-
 def parse_name_from_title(title: str) -> str | None:
     if not title:
         return None
 
-    # Remove "..." at end
     title = title.replace("...", "").strip()
 
-    # Format: "Name - Role | LinkedIn" or "Name - Company"
-    # Split on " - " and take first part
-    parts = title.split(" - ")
-    name = parts[0].strip()
+    name = title.split(" - ")[0].strip()
 
-    # Remove prefixes like "Capt.", "Dr.", "Mr.", "Ms."
-    name = re.sub(r'^(Capt\.|Dr\.|Mr\.|Ms\.|Mrs\.)\s*', '', name, flags=re.IGNORECASE).strip()
+    name = re.sub(r'^(Dr\.|Mr\.|Ms\.|Mrs\.|Capt\.)\s*', '', name, flags=re.IGNORECASE)
+    name = re.sub(r',?\s*(Ph\.?D\.?|MBA|BBA|SHRMCP|PHR).*', '', name, flags=re.IGNORECASE)
+    name = re.sub(r'[^a-zA-Z\s]', '', name)
+    name = re.sub(r'\s+', ' ', name).strip()
 
-    # Remove single letter initials with dot e.g. "Geeta B." → "Geeta"
-    # Keep only if we have at least 2 proper words
     words = name.split()
-    words = [w for w in words if not re.fullmatch(r'[A-Z]\.', w)]
 
     if len(words) >= 2:
-        return " ".join(words)
-    elif len(words) == 1 and len(words[0]) > 3:
-        return words[0]
+        first = words[0]
+        last = words[1]
+
+        if len(last) >= 1:
+            return f"{first} {last}"
 
     return None
 
 
-def scrape_hr_names(company: str, domain: str) -> list:
+def scrape_hr_names(company: str, domain: str, progress_callback=None) -> list:
     print(f"\n[🔍] Scraping HR profiles for: {company}")
 
     all_names = []
@@ -47,11 +43,15 @@ def scrape_hr_names(company: str, domain: str) -> list:
     page = 1
 
     while True:
-        print(f"  [📄] Fetching page {page} (start={start})...")
+        msg = f"📄 Fetching page {page} (start={start})..."
+        print(msg)
+
+        if progress_callback:
+            progress_callback(msg)
 
         params = {
             "engine": "google",
-            "q": f'site:linkedin.com/in ("HR" OR "Human Resources") "{company}" "{domain}"',
+            "q": f'site:linkedin.com/in ("HR" OR "Human Resources" OR "Talent Acquisition") "{company}"',
             "api_key": SERPAPI_KEY,
             "num": 10,
             "start": start,
@@ -78,6 +78,14 @@ def scrape_hr_names(company: str, domain: str) -> list:
             if "linkedin.com/in/" not in link:
                 continue
 
+            title_lower = title.lower()
+
+            if company.lower() not in title_lower:
+                continue
+
+            if not any(word in title_lower for word in ["hr", "human", "talent", "recruit"]):
+                continue
+
             name = parse_name_from_title(title)
 
             if name and name not in seen:
@@ -93,7 +101,6 @@ def scrape_hr_names(company: str, domain: str) -> list:
             else:
                 print(f"  [✗] SKIP ← {title}")
 
-        # Stop if last page
         if len(organic) < 5:
             print(f"  [✓] Last page reached — stopping")
             break
@@ -113,8 +120,3 @@ def export_names_csv(names: list, output_path: str = "data/output/hr_names.csv")
         writer.writeheader()
         writer.writerows(names)
     print(f"[✓] Saved {len(names)} names → {output_path}")
-
-
-if __name__ == "__main__":
-    results = scrape_hr_names("Jio", "jio.com")
-    export_names_csv(results)
