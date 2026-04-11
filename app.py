@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+import random
 from dotenv import load_dotenv
 from scraper.linkedin_scraper import scrape_hr_names
 from predictor.email_predictor import predict_emails
@@ -13,7 +14,7 @@ st.set_page_config(
 )
 
 st.title("🎯 Job Outreach Engine")
-st.caption("Find HR emails from LinkedIn for cold job outreach")
+st.caption("Find HR & Employeeemails from LinkedIn for cold job outreach")
 
 st.divider()
 
@@ -29,21 +30,31 @@ with col2:
 st.divider()
 
 # --- TOP PATTERNS ---
-TOP_PATTERNS = ["first.last", "firstlast", "flast", "f.last"]
+ALL_PATTERNS = ["first.last", "firstlast", "flast", "f.last"]
+
+selected_patterns = st.multiselect(
+    "📧 Email patterns to generate",
+    options=ALL_PATTERNS,
+    default=ALL_PATTERNS,
+    help="first.last → rahul.sharma | firstlast → rahulsharma | flast → rsharma | f.last → r.sharma"
+)
+
+st.divider()
 
 # --- Role Search ---
-ROLE_SUGGESTIONS = ["HR", "Human Resources", "Talent Acquisition", "Recruiter","Reliance Jio", 
-                    "Hiring Manager", "Software Engineer", "SDE", "Data Scientist", 
+ROLE_SUGGESTIONS = ["HR", "Human Resources", "Talent Acquisition", "Recruiter",
+                    "Hiring Manager", "Software Engineer", "SDE", "Data Scientist",
                     "Product Manager", "Engineering Manager"]
 
 selected_roles = st.multiselect(
     "🔍 Search roles",
     options=ROLE_SUGGESTIONS,
-    default=["HR", "Human Resources", "Talent Acquisition", "Reliance Jio"],
+    default=["HR", "Human Resources", "Talent Acquisition"],
     placeholder="Select or type a role...",
     accept_new_options=True
 )
-st.caption("💡 Tip: To find Referals, search **ROLE**, **COMPANY NAME**, e.g **Associate Data Scientist**, **Reliance Jio**")
+
+st.caption("💡 Tip: To find HR emails, select **HR**, **Human Resources**, or **Talent Acquisition**")
 
 if not selected_roles:
     st.warning("Add at least one role to search.")
@@ -59,6 +70,10 @@ if st.button("🔍 Find Emails", use_container_width=True, type="primary"):
 
     if not selected_roles:
         st.error("Please select at least one role to search!")
+        st.stop()
+
+    if not selected_patterns:
+        st.error("Please select at least one email pattern!")
         st.stop()
 
     # --- Progress UI ---
@@ -97,7 +112,7 @@ if st.button("🔍 Find Emails", use_container_width=True, type="primary"):
                 continue
 
             emails = predict_emails(hr["name"], domain)
-            emails = [e for e in emails if e["pattern"] in TOP_PATTERNS]
+            emails = [e for e in emails if e["pattern"] in selected_patterns]
             all_emails.extend(emails)
 
         st.write(f"✅ Generated {len(all_emails)} email predictions")
@@ -108,6 +123,7 @@ if st.button("🔍 Find Emails", use_container_width=True, type="primary"):
 
     # --- RESULTS ---
     st.subheader(f"Results — {company}")
+    st.caption("Random sample of 10 profiles shown below. Download full list as CSV.")
 
     df = pd.DataFrame(all_emails)
 
@@ -117,8 +133,7 @@ if st.button("🔍 Find Emails", use_container_width=True, type="primary"):
 
     df = df.drop_duplicates(subset=["email"])
 
-    # --- Group by person ---
-    import random
+    # --- Group by person (random 10) ---
     names = list(df["name"].unique())
     random.shuffle(names)
     for name in names[:10]:
