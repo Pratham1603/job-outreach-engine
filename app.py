@@ -14,7 +14,7 @@ st.set_page_config(
 )
 
 st.title("🎯 Job Outreach Engine")
-st.caption("Find HR & Employeeemails from LinkedIn for cold job outreach")
+st.caption("Find HR & Employee emails from LinkedIn for cold job outreach")
 
 st.divider()
 
@@ -114,6 +114,9 @@ if st.button("🔍 Find Emails", use_container_width=True, type="primary"):
             emails = predict_emails(hr["name"], domain)
             emails = [e for e in emails if e["pattern"] in selected_patterns]
             all_emails.extend(emails)
+
+        # Sort by name A→Z
+        all_emails = sorted(all_emails, key=lambda x: x["name"])
 
         st.write(f"✅ Generated {len(all_emails)} email predictions")
 
