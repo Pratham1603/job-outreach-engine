@@ -4,6 +4,7 @@ import random
 from dotenv import load_dotenv
 from scraper.linkedin_scraper import scrape_hr_names
 from predictor.email_predictor import predict_emails
+import dns.resolver
 
 load_dotenv()
 
@@ -27,6 +28,25 @@ with col1:
 with col2:
     domain = st.text_input("Company Domain", placeholder="e.g. jio.com")
 
+# --- Domain MX Validation ---
+if domain:
+    try:
+        mx_records = dns.resolver.resolve(domain, 'MX')
+        if len(mx_records) > 0:
+            st.success(f"✅ {domain} is valid")
+    except dns.resolver.NXDOMAIN:
+        st.error(f"❌ '{domain}' does not exist. Please enter correct domain.")
+        domain = ""
+    except dns.resolver.NoAnswer:
+        st.error(f"❌ '{domain}' has no mail server. Please enter correct domain.")
+        domain = ""
+    except dns.resolver.Timeout:
+        st.warning(f"⚠️ DNS timeout — try again.")
+        domain = ""
+    except Exception as e:
+        st.error(f"❌ Invalid domain: {e}")
+        domain = ""
+
 st.divider()
 
 # --- TOP PATTERNS ---
@@ -37,6 +57,17 @@ selected_patterns = st.multiselect(
     options=ALL_PATTERNS,
     default=ALL_PATTERNS,
     help="first.last → rahul.sharma | firstlast → rahulsharma | flast → rsharma | f.last → r.sharma"
+)
+
+st.caption(
+    "💡 Tip: "
+
+)
+
+st.caption(
+    "Not sure which pattern the company uses? "
+    "Check on [Email-Format.com](https://www.email-format.com/) or [Hunter.io](https://hunter.io/domain-search)"
+    "— enter the domain and it'll tell you the most used pattern."
 )
 
 st.divider()

@@ -5,3 +5,4 @@ google-search-results
 python-dotenv
 fake-useragent
 streamlit
+dnspython
